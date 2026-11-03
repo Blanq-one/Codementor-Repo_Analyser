@@ -1,0 +1,20 @@
+name: Mirror to Blanq-one repo
+
+on:
+  push:
+    branches:
+      - '**'
+  delete:
+  create:
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone source repo (mirror)
+        run: git clone --mirror https://github.com/shruti25838/CodeMentor-AI.git source-repo
+
+      - name: Push mirror to destination repo
+        run: |
+          cd source-repo
+          git push --mirror https://${{ secrets.MIRROR_TOKEN }}@github.com/Blanq-one/Codementor-Repo_Analyser.git
