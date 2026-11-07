@@ -2836,3 +2836,37 @@ Every number or claim here comes from a command that can be re-run.
 - Notes: **nothing here was failing.** This is consistency and coverage, not a fix, and it is recorded separately from the two fixes for that reason
   **Two tests stopped reaching into the object.** `pacer.window = [(time.monotonic() - 120, 6000)]` built the window by hand against the real clock; they call `record` and move the fake clock instead, which exercises `record` as well and states the ageing in seconds the test owns
   **The two pacers are still two pacers.** They have different fields (`budget`/`window` against `limit`/`spends`), different estimate rules and different waiting strategies -- one sleeps out the oldest entry, the other polls once a second. This change makes them consistent about the clock and nothing else; merging them is a bigger change than either of these entries, and the two scripts that would have to agree on an estimate rule have not been shown to want the same one
+
+### Decision: the rule an overview-context change will be read by, written before the overview sets were scored
+- Value: **no overview number exists when this entry is committed.** The overview sets (`eval/questions/overview/*.json`, 16 questions) and the scorer (`scripts/eval_overview.py`) are committed at 1199fa8 and 94b80ee; nothing has been run on the real checkouts. The only runs so far are the unit tests, which use a three-file repository written into a temporary folder.
+
+  **Why a new set.** Every earlier question set asks about one fact in one or two files. The site's four starter chips ask something else - what the project does, which files matter, how it is laid out, what it uses - and on the live site "Summarize what this codebase does" was answered from `_json.py`, `url_safe.py`, `encoding.py` and a test file, with `signer.py` and `serializer.py` left out. Nothing in this file measures that kind of question, so a change aimed at it would have nothing to be read against.
+
+  **What is measured, per question, on the context the default chat path would send** (top 5 snippets, then the mentor's prompt; see the docstring of `scripts/eval_overview.py` for what differs from the server):
+
+  | metric | definition | direction |
+  |---|---|---|
+  | core-file coverage | core files present in the context / core files; a file counts once however many spans it has | higher is better |
+  | noise share | slots that are a test file, a file under `docs/`, or a span overlapping an earlier slot of the same file / slots | lower is better |
+  | manifest coverage | manifest files (`pyproject.toml`, `README.md`) present / manifest files, dependency questions only | reported, **not in the rule**; zero for unindexed files by construction |
+  | prompt characters | characters of the formatted mentor prompt, no model call | reported, **not in the rule** |
+
+  **The rule.** A change to what an overview question is given is adopted only if all three hold, each on the means over both repositories:
+
+  * **dev (8 questions): mean core-file coverage is strictly higher than the incumbent's, *and***
+  * **dev: mean noise share is not higher than the incumbent's, *and***
+  * **held-out (the `test` split of this set, 8 questions): mean core-file coverage is not lower than the incumbent's.**
+
+  It must also leave `python scripts/eval_retrieval.py --split test` printing the shipped default's numbers (hit@5 0.850, MRR@10 0.778): a change that moves the code-question numbers is a different decision and gets its own entry.
+
+  **The held-out half is scored once.** One run for the incumbent and one per candidate, the numbers that come back are the numbers, and nothing is adjusted and re-scored on it. A candidate that fails is not tuned and tried again; that would make the held-out half a development set, which is what happened to the earlier held-out sets. Further tuning needs a new overview set written after these numbers are read.
+
+  **Which candidate is the incumbent.** What the committed server runs for the hash provider: hash embeddings, `structured` records, BM25 fusion, top 5. The live site runs the cloudflare provider with whole records and no BM25; this script cannot reproduce that without API calls and so does not try
+- Command: no run. This entry fixes the rule the next entry's data will be read by
+- Dataset/repo: `eval/questions/overview/itsdangerous.json` and `flask.json`, 8 questions each (4 `dev`, 4 `test`), pinned at https://github.com/pallets/itsdangerous 672971d66a2e and https://github.com/pallets/flask d73fa1cdcbd8. **Not yet scored under anything**
+- Date: 2026-11-07
+- Commit: decided at 94b80ee and committed on top of it; no code changed by this entry
+- Notes: **core_files are one person's judgement, written from each repository's file listing and README without opening a source file, and that is the weakest part of this measurement.** Several are guesses from a file's name (`_json.py`, `encoding.py`, `wrappers.py`, `sansio/scaffold.py`) and the reasoning beside each says so. They were not chosen blind to retrieval: the default retrieval output for the four starter questions on both repositories had been looked at earlier in the same working session, before the files were written, so the starters' core files may lean toward what a good answer plainly needs rather than being independent of what the search returned.
+  **Eight questions is very small.** One question is 0.125 of a mean, so the rule can turn on one question moving one file in or out. The per-repository tables are reported beside the overall ones for that reason.
+  **The two halves are not independent in topic.** Each of the four topics (summary, files, architecture, dependencies) appears once in each half, as a starter in one and a paraphrase in the other, because a split by topic would have left one half with no dependency question. A change that helps "architecture" helps both halves, so held-out is a check against overfitting wording, not against overfitting topic.
+  **Coverage counts files, not usefulness.** A context that holds `signer.py` through a one-line span counts the same as one that holds the whole class. The noise share is the check that a high coverage was not bought with slots that are mostly nothing
