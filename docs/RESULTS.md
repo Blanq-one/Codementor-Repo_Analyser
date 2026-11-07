@@ -2870,3 +2870,34 @@ Every number or claim here comes from a command that can be re-run.
   **Eight questions is very small.** One question is 0.125 of a mean, so the rule can turn on one question moving one file in or out. The per-repository tables are reported beside the overall ones for that reason.
   **The two halves are not independent in topic.** Each of the four topics (summary, files, architecture, dependencies) appears once in each half, as a starter in one and a paraphrase in the other, because a split by topic would have left one half with no dependency question. A change that helps "architecture" helps both halves, so held-out is a check against overfitting wording, not against overfitting topic.
   **Coverage counts files, not usefulness.** A context that holds `signer.py` through a one-line span counts the same as one that holds the whole class. The noise share is the check that a high coverage was not bought with slots that are mostly nothing
+
+### Check: the incumbent default on the overview sets - core-file coverage 0.233 dev, 0.269 held-out, and over half the slots are noise
+- Value: the shipped hash configuration (hash embeddings, `structured` records, BM25 fusion, top 5, stopwords dropped, 20 candidates) scored on `eval/questions/overview`, under the rule written at 6174e65. **No candidate is scored here and nothing is adopted; this is the number any later change has to beat.** The held-out half was scored once.
+
+  | split | repo | n | core coverage | noise share | manifest | prompt chars |
+  |---|---|---|---|---|---|---|
+  | dev | itsdangerous | 4 | 0.400 | 0.450 | 0.000 | 5,333 |
+  | dev | flask | 4 | 0.063 | 0.600 | 0.000 | 4,762 |
+  | **dev** | **overall** | **8** | **0.233** | **0.525** | **0.000** | 5,048 |
+  | held-out | itsdangerous | 4 | 0.425 | 0.600 | 0.000 | 4,658 |
+  | held-out | flask | 4 | 0.113 | 0.550 | 0.000 | 5,295 |
+  | **held-out** | **overall** | **8** | **0.269** | **0.575** | **0.000** | 4,976 |
+
+  **What it shows.**
+  * **Six of the sixteen contexts hold none of their core files** (flask 02, 03, 04, 05, 08 and itsdangerous 08). Eleven of sixteen have a noise share of 0.6 or more.
+  * **The starters are not the worst.** "Show me the architecture overview" on flask is 0.80 noise: four of five slots are test files (`typing_route.py` twice, `test_cli.py` twice) and the fifth is a `cli.py` fragment. "What does this project do?" on flask is three spans of `tests/test_instance_config.py`, `docs/conf.py` and a one-line `globals.py` span.
+  * **itsdangerous is better than flask on both numbers**, and the best single result is "What are the most important files?" on itsdangerous: 1.00 coverage, 0.20 noise (`serializer.py` twice, `signer.py`, `timed.py`, and one overlapping `serializer.py` span). Why this one question did well was not investigated; with eight questions it is one result, not a pattern.
+  * **Overlap is real but is not the main noise.** Overlapping spans are the largest single reason in itsdangerous (`timed.py:72-108` beside `71-108`; `signer.py:48-64` beside `62-64`); tests are the largest in flask.
+  * **Manifest coverage is 0.000 everywhere, by construction**: `pyproject.toml` and `README.md` are not in `_SUFFIX_MAP`, so no record points at them. It cannot move unless something other than retrieval supplies them.
+  * **Prompt size is about 5,000 characters of a 6,000 cap**, roughly 1,250 tokens at the repository's 4-characters-per-token figure, in line with the "about 1,400 tokens every question" of snippets recorded at 9690592. A snippet that does not fit is dropped whole, which is why flask's "most important files" kept three of five.
+
+  **The shipped default's code-question numbers are unchanged**: `scripts/eval_retrieval.py --split test` prints hit@5 0.850 and MRR@10 0.778 (itsdangerous 0.800 / 0.828, flask 0.900 / 0.729) at 6174e65. Nothing in this branch touches a code path.
+
+  **The live site does not run this configuration.** It runs the cloudflare provider with whole records and no BM25, and this run cannot reproduce that without API calls, which were not made. The live symptom (answers from `_json.py`, `url_safe.py`, `encoding.py` and a test file) is a different set of files from any recorded here, so these numbers show that the failure exists under the committed hash default too, not how large it is on the site
+- Command: `.\.venv\Scripts\python.exe scripts/eval_overview.py --split dev`, then once `.\.venv\Scripts\python.exe scripts/eval_overview.py --split test`; and `.\.venv\Scripts\python.exe scripts/eval_retrieval.py --split test` for the unchanged code-question numbers. No server, no model, no network; the pinned checkouts were already in `.codeatlas/eval-repos`
+- Dataset/repo: `eval/questions/overview/*.json`, 16 questions, https://github.com/pallets/itsdangerous 672971d66a2e and https://github.com/pallets/flask d73fa1cdcbd8
+- Date: 2026-11-07
+- Commit: 6174e65 (the state measured); the scripts and question files are unchanged since 94b80ee and 1199fa8
+- Notes: **eight questions per split, one repository's worth of judgement in the core files.** A mean moves by 0.125 when one question moves from 0 to 1, and the core files were chosen from file names and a README (see the previous entry). Treat 0.233 and 0.269 as the same number: the held-out half is not independent of the dev half in topic, and the difference between them is smaller than one question.
+  **`prefix_metadata` puts the file path into each embedded text**, so a path word such as "tests" or "docs" can pull those files toward any question that shares a word with it; this run does not separate that from the keyword rerank, and no setting was changed to find out.
+  **The scorer builds its own in-memory index** as the retrieval eval does, not the server's on-disk one, and skips the follow-up rewrite an overview question never needs. It imports `_PROMPT` and `_numbered` from `coding_mentor_agent.py` because the final prompt is assembled inside the call that invokes the model and nothing public stops short of it
