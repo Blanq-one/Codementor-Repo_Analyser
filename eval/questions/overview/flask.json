@@ -2,7 +2,7 @@
   "name": "flask",
   "repo_url": "https://github.com/pallets/flask",
   "commit": "d73fa1cdcbd8b1465c151db8924ba58b1dd14e35",
-  "note": "overview: questions of the kind the site's four starter chips ask, which the code-specific sets do not cover. Written at the pinned commit BEFORE any overview retrieval was run, from the repository's file listing and README only (no source file was opened to choose core_files). core_files maps each file a good overview must draw on to one line of reasoning; manifest_files does the same for the dependency questions (these are not indexed by the server, so coverage of them is zero by construction). expected_files repeats the core_files paths so the existing loader accepts the file. The loader only knows the splits dev/test, so split 'dev' is the four dev questions and split 'test' is the four held-out ones; 'test' here means the held-out half of THIS set, scored once, not eval/questions/*.json's test split. Each topic appears once in each split (starter in one, paraphrase in the other), so the halves are not independent in topic.",
+  "note": "overview: questions of the kind the site's four starter chips ask, which the code-specific sets do not cover. Written at the pinned commit BEFORE any overview retrieval was run, from the repository's file listing and README only (no source file was opened to choose core_files). core_files maps each file a good overview must draw on to one line of reasoning; manifest_files does the same for the dependency questions (these are not indexed by the server, so coverage of them is zero by construction). expected_files repeats the core_files paths so the existing loader accepts the file. The loader only knows the splits dev/test, so split 'dev' is the four dev questions and split 'test' is the four held-out ones; 'test' here means the held-out half of THIS set, scored once, not eval/questions/*.json's test split. Each topic appears once in each split (starter in one, paraphrase in the other), so the halves are not independent in topic. CORRECTED after the first labels were committed (1199fa8): some core_files and manifest_files were added or removed after reading the files' source, not retrieval results; see docs/RESULTS.md.",
   "questions": [
     {
       "id": "ov-flask-01",
@@ -13,13 +13,15 @@
         "src/flask/__init__.py",
         "src/flask/app.py",
         "src/flask/templating.py",
-        "src/flask/cli.py"
+        "src/flask/cli.py",
+        "src/flask/sansio/scaffold.py"
       ],
       "core_files": {
         "src/flask/__init__.py": "The public API a user imports from (README example: from flask import Flask).",
         "src/flask/app.py": "README example creates a Flask app object; the application class lives in app.py.",
         "src/flask/templating.py": "README: built on Jinja; templating is a headline feature.",
-        "src/flask/cli.py": "README shows 'flask run'; the command line lives in cli.py."
+        "src/flask/cli.py": "README shows 'flask run'; the command line lives in cli.py.",
+        "src/flask/sansio/scaffold.py": "Source: Scaffold.route (line 344) is the @app.route decorator the README example uses."
       },
       "manifest_files": {}
     },
@@ -50,14 +52,18 @@
         "src/flask/sansio/app.py",
         "src/flask/sansio/scaffold.py",
         "src/flask/blueprints.py",
-        "src/flask/ctx.py"
+        "src/flask/ctx.py",
+        "src/flask/sansio/blueprints.py",
+        "src/flask/globals.py"
       ],
       "core_files": {
         "src/flask/app.py": "The application class.",
         "src/flask/sansio/app.py": "The I/O-free half of the application class (listing: sansio package).",
         "src/flask/sansio/scaffold.py": "Shared base for app and blueprint (listing guess from the name).",
         "src/flask/blueprints.py": "Modular grouping of routes.",
-        "src/flask/ctx.py": "Listing: ctx suggests the per-request/app context machinery."
+        "src/flask/ctx.py": "Listing: ctx suggests the per-request/app context machinery.",
+        "src/flask/sansio/blueprints.py": "Source: BlueprintSetupState and register_blueprint; the real Blueprint logic.",
+        "src/flask/globals.py": "Source: current_app, g, request and session are LocalProxy objects over context variables."
       },
       "manifest_files": {}
     },
@@ -68,11 +74,13 @@
       "topic": "deps",
       "expected_files": [
         "src/flask/templating.py",
-        "src/flask/wrappers.py"
+        "src/flask/wrappers.py",
+        "src/flask/cli.py"
       ],
       "core_files": {
         "src/flask/templating.py": "README: Flask began as a wrapper around Werkzeug and Jinja; Jinja integration lives here.",
-        "src/flask/wrappers.py": "Listing guess: request/response wrappers, the Werkzeug boundary named in the README."
+        "src/flask/wrappers.py": "Listing guess: request/response wrappers, the Werkzeug boundary named in the README.",
+        "src/flask/cli.py": "Source: imports click, a declared dependency, for FlaskGroup and run_command."
       },
       "manifest_files": {
         "pyproject.toml": "Declares the runtime dependencies (README names Werkzeug and Jinja).",
@@ -88,13 +96,15 @@
         "src/flask/__init__.py",
         "src/flask/app.py",
         "src/flask/templating.py",
-        "src/flask/cli.py"
+        "src/flask/cli.py",
+        "src/flask/sansio/scaffold.py"
       ],
       "core_files": {
         "src/flask/__init__.py": "The public API a user imports from (README example: from flask import Flask).",
         "src/flask/app.py": "README example creates a Flask app object; the application class lives in app.py.",
         "src/flask/templating.py": "README: built on Jinja; templating is a headline feature.",
-        "src/flask/cli.py": "README shows 'flask run'; the command line lives in cli.py."
+        "src/flask/cli.py": "README shows 'flask run'; the command line lives in cli.py.",
+        "src/flask/sansio/scaffold.py": "Source: Scaffold.route (line 344) is the @app.route decorator the README example uses."
       },
       "manifest_files": {}
     },
@@ -107,13 +117,15 @@
         "src/flask/app.py",
         "src/flask/sansio/app.py",
         "src/flask/sansio/scaffold.py",
-        "src/flask/blueprints.py"
+        "src/flask/blueprints.py",
+        "src/flask/sansio/blueprints.py"
       ],
       "core_files": {
         "src/flask/app.py": "The application object every README example starts from.",
         "src/flask/sansio/app.py": "Listing: a second app.py under sansio/ suggests the I/O-free half of the application class.",
         "src/flask/sansio/scaffold.py": "Listing: scaffold in the sansio package suggests the base shared by app and blueprint.",
-        "src/flask/blueprints.py": "Listing: blueprints are the project's own unit for growing past a single module."
+        "src/flask/blueprints.py": "Listing: blueprints are the project's own unit for growing past a single module.",
+        "src/flask/sansio/blueprints.py": "Source: BlueprintSetupState and register_blueprint; blueprints.py is a thin subclass of this."
       },
       "manifest_files": {}
     },
@@ -127,14 +139,18 @@
         "src/flask/sansio/app.py",
         "src/flask/sansio/scaffold.py",
         "src/flask/blueprints.py",
-        "src/flask/ctx.py"
+        "src/flask/ctx.py",
+        "src/flask/sansio/blueprints.py",
+        "src/flask/globals.py"
       ],
       "core_files": {
         "src/flask/app.py": "The application class.",
         "src/flask/sansio/app.py": "The I/O-free half of the application class (listing: sansio package).",
         "src/flask/sansio/scaffold.py": "Shared base for app and blueprint (listing guess from the name).",
         "src/flask/blueprints.py": "Modular grouping of routes.",
-        "src/flask/ctx.py": "Listing: ctx suggests the per-request/app context machinery."
+        "src/flask/ctx.py": "Listing: ctx suggests the per-request/app context machinery.",
+        "src/flask/sansio/blueprints.py": "Source: BlueprintSetupState and register_blueprint; the real Blueprint logic.",
+        "src/flask/globals.py": "Source: current_app, g, request and session are LocalProxy objects over context variables."
       },
       "manifest_files": {}
     },
@@ -145,11 +161,13 @@
       "topic": "deps",
       "expected_files": [
         "src/flask/templating.py",
-        "src/flask/wrappers.py"
+        "src/flask/wrappers.py",
+        "src/flask/cli.py"
       ],
       "core_files": {
         "src/flask/templating.py": "README: Flask began as a wrapper around Werkzeug and Jinja; Jinja integration lives here.",
-        "src/flask/wrappers.py": "Listing guess: request/response wrappers, the Werkzeug boundary named in the README."
+        "src/flask/wrappers.py": "Listing guess: request/response wrappers, the Werkzeug boundary named in the README.",
+        "src/flask/cli.py": "Source: imports click, a declared dependency, for FlaskGroup and run_command."
       },
       "manifest_files": {
         "pyproject.toml": "Declares the runtime dependencies (README names Werkzeug and Jinja).",

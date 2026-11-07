@@ -2,7 +2,7 @@
   "name": "itsdangerous",
   "repo_url": "https://github.com/pallets/itsdangerous",
   "commit": "672971d66a2ef9f85151e53283113f33d642dabd",
-  "note": "overview: questions of the kind the site's four starter chips ask, which the code-specific sets do not cover. Written at the pinned commit BEFORE any overview retrieval was run, from the repository's file listing and README only (no source file was opened to choose core_files). core_files maps each file a good overview must draw on to one line of reasoning; manifest_files does the same for the dependency questions (these are not indexed by the server, so coverage of them is zero by construction). expected_files repeats the core_files paths so the existing loader accepts the file. The loader only knows the splits dev/test, so split 'dev' is the four dev questions and split 'test' is the four held-out ones; 'test' here means the held-out half of THIS set, scored once, not eval/questions/*.json's test split. Each topic appears once in each split (starter in one, paraphrase in the other), so the halves are not independent in topic.",
+  "note": "overview: questions of the kind the site's four starter chips ask, which the code-specific sets do not cover. Written at the pinned commit BEFORE any overview retrieval was run, from the repository's file listing and README only (no source file was opened to choose core_files). core_files maps each file a good overview must draw on to one line of reasoning; manifest_files does the same for the dependency questions (these are not indexed by the server, so coverage of them is zero by construction). expected_files repeats the core_files paths so the existing loader accepts the file. The loader only knows the splits dev/test, so split 'dev' is the four dev questions and split 'test' is the four held-out ones; 'test' here means the held-out half of THIS set, scored once, not eval/questions/*.json's test split. Each topic appears once in each split (starter in one, paraphrase in the other), so the halves are not independent in topic. CORRECTED after the first labels were committed (1199fa8): some core_files and manifest_files were added or removed after reading the files' source, not retrieval results; see docs/RESULTS.md.",
   "questions": [
     {
       "id": "ov-itsd-01",
@@ -29,14 +29,16 @@
       "question": "Which modules should I read first?",
       "topic": "read_first",
       "expected_files": [
+        "src/itsdangerous/__init__.py",
         "src/itsdangerous/signer.py",
         "src/itsdangerous/serializer.py",
         "src/itsdangerous/timed.py"
       ],
       "core_files": {
-        "src/itsdangerous/signer.py": "The signing primitive the README describes first; every other module builds on it.",
-        "src/itsdangerous/serializer.py": "README: how data is serialized is customisable; the core public class family.",
-        "src/itsdangerous/timed.py": "README names timestamps as one of the three features."
+        "src/itsdangerous/__init__.py": "Source: 17 re-exports in one short file; the quickest map of the whole public API.",
+        "src/itsdangerous/signer.py": "Source: Signer, HMACAlgorithm, NoneAlgorithm; the signing primitive the rest builds on.",
+        "src/itsdangerous/serializer.py": "Source: Serializer.dumps/loads/make_signer; the class the README example uses.",
+        "src/itsdangerous/timed.py": "Source: TimestampSigner and TimedSerializer add timestamps and max_age on top of both."
       },
       "manifest_files": {}
     },
@@ -50,14 +52,16 @@
         "src/itsdangerous/signer.py",
         "src/itsdangerous/serializer.py",
         "src/itsdangerous/timed.py",
-        "src/itsdangerous/url_safe.py"
+        "src/itsdangerous/url_safe.py",
+        "src/itsdangerous/exc.py"
       ],
       "core_files": {
         "src/itsdangerous/__init__.py": "A package's public surface: shows which classes the project exports and how they group.",
         "src/itsdangerous/signer.py": "Lowest layer: signs a string.",
         "src/itsdangerous/serializer.py": "Layer above: serialises data, then signs it (README example).",
         "src/itsdangerous/timed.py": "Variant adding timestamps (README).",
-        "src/itsdangerous/url_safe.py": "Variant for URL-safe tokens (README example class)."
+        "src/itsdangerous/url_safe.py": "Variant for URL-safe tokens (README example class).",
+        "src/itsdangerous/exc.py": "Source: the public exception hierarchy, BadData -> BadSignature -> BadTimeSignature -> SignatureExpired."
       },
       "manifest_files": {}
     },
@@ -67,16 +71,17 @@
       "question": "What does it depend on?",
       "topic": "deps",
       "expected_files": [
+        "src/itsdangerous/signer.py",
         "src/itsdangerous/_json.py",
         "src/itsdangerous/encoding.py"
       ],
       "core_files": {
+        "src/itsdangerous/signer.py": "Source: imports hashlib and hmac, the actual cryptographic dependency (stdlib).",
         "src/itsdangerous/_json.py": "Listing: a private json helper module, likely where the json dependency is wrapped (guess from the name).",
         "src/itsdangerous/encoding.py": "Listing: encoding helpers, likely where bytes/base64 handling lives (guess from the name)."
       },
       "manifest_files": {
-        "pyproject.toml": "Declares the package's runtime dependencies.",
-        "README.md": "States what the library is for and the one example that shows what it is used with."
+        "pyproject.toml": "Source: declares no runtime dependencies (only dev and docs groups), so it shows there are none."
       }
     },
     {
@@ -125,14 +130,16 @@
         "src/itsdangerous/signer.py",
         "src/itsdangerous/serializer.py",
         "src/itsdangerous/timed.py",
-        "src/itsdangerous/url_safe.py"
+        "src/itsdangerous/url_safe.py",
+        "src/itsdangerous/exc.py"
       ],
       "core_files": {
         "src/itsdangerous/__init__.py": "A package's public surface: shows which classes the project exports and how they group.",
         "src/itsdangerous/signer.py": "Lowest layer: signs a string.",
         "src/itsdangerous/serializer.py": "Layer above: serialises data, then signs it (README example).",
         "src/itsdangerous/timed.py": "Variant adding timestamps (README).",
-        "src/itsdangerous/url_safe.py": "Variant for URL-safe tokens (README example class)."
+        "src/itsdangerous/url_safe.py": "Variant for URL-safe tokens (README example class).",
+        "src/itsdangerous/exc.py": "Source: the public exception hierarchy, BadData -> BadSignature -> BadTimeSignature -> SignatureExpired."
       },
       "manifest_files": {}
     },
@@ -142,16 +149,17 @@
       "question": "What frameworks and libraries are used?",
       "topic": "deps",
       "expected_files": [
+        "src/itsdangerous/signer.py",
         "src/itsdangerous/_json.py",
         "src/itsdangerous/encoding.py"
       ],
       "core_files": {
+        "src/itsdangerous/signer.py": "Source: imports hashlib and hmac, the actual cryptographic dependency (stdlib).",
         "src/itsdangerous/_json.py": "Listing: a private json helper module, likely where the json dependency is wrapped (guess from the name).",
         "src/itsdangerous/encoding.py": "Listing: encoding helpers, likely where bytes/base64 handling lives (guess from the name)."
       },
       "manifest_files": {
-        "pyproject.toml": "Declares the package's runtime dependencies.",
-        "README.md": "States what the library is for and the one example that shows what it is used with."
+        "pyproject.toml": "Source: declares no runtime dependencies (only dev and docs groups), so it shows there are none."
       }
     }
   ]

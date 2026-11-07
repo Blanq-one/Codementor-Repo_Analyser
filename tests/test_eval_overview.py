@@ -91,7 +91,9 @@ def test_only_the_dependency_questions_name_manifest_files():
     for s in _sets():
         for q in s.questions:
             if q.topic == "deps":
-                assert set(q.manifest_files) == {"pyproject.toml", "README.md"}, q.id
+                # itsdangerous's README names no dependency, so only its pyproject (which declares none) is listed.
+                expected = {"pyproject.toml"} if s.name == "itsdangerous" else {"pyproject.toml", "README.md"}
+                assert set(q.manifest_files) == expected, q.id
                 assert all(reason.strip() for reason in q.manifest_files.values()), q.id
             else:
                 assert q.manifest_files == {}, q.id
