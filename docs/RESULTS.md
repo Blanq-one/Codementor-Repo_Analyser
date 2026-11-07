@@ -2901,3 +2901,49 @@ Every number or claim here comes from a command that can be re-run.
 - Notes: **eight questions per split, one repository's worth of judgement in the core files.** A mean moves by 0.125 when one question moves from 0 to 1, and the core files were chosen from file names and a README (see the previous entry). Treat 0.233 and 0.269 as the same number: the held-out half is not independent of the dev half in topic, and the difference between them is smaller than one question.
   **`prefix_metadata` puts the file path into each embedded text**, so a path word such as "tests" or "docs" can pull those files toward any question that shares a word with it; this run does not separate that from the keyword rerank, and no setting was changed to find out.
   **The scorer builds its own in-memory index** as the retrieval eval does, not the server's on-disk one, and skips the follow-up rewrite an overview question never needs. It imports `_PROMPT` and `_numbered` from `coding_mentor_agent.py` because the final prompt is assembled inside the call that invokes the model and nothing public stops short of it
+
+### Change: the overview labels corrected from the files' source, and the incumbent rescored under them
+- Value: **the core_files and manifest_files in `eval/questions/overview/*.json` were corrected after they were first written (1199fa8), from reading each file's source, and the incumbent was rescored under the corrected labels so that any later candidate is read against the same ones.** The held-out half was already scored once under the old labels (the entry at c7587f4); **this second held-out scoring of the unchanged incumbent is a re-baseline, not a new selection**, and no candidate is involved.
+
+  **What was changed, each reason from the source** (the old labels were written from file names and READMEs; these were checked by opening the files):
+
+  | repo | topic | change | reason read in the source |
+  |---|---|---|---|
+  | itsdangerous | dependencies | add `signer.py` | imports `hashlib` and `hmac`, the actual cryptographic dependency |
+  | itsdangerous | dependencies | drop `README.md` from the manifest | it names no library or dependency |
+  | itsdangerous | dependencies | `pyproject.toml` kept, reason now "declares no runtime dependencies" | it has no `dependencies` key, only dev and docs groups; the earlier reason was wrong |
+  | itsdangerous | read first | add `__init__.py` | 17 re-exports in one short file, the quickest map of the public API |
+  | itsdangerous | architecture | add `exc.py` | the public exception hierarchy `BadData` -> `BadSignature` -> `BadTimeSignature` -> `SignatureExpired` |
+  | flask | summary | add `sansio/scaffold.py` | `Scaffold.route` (line 344) is the `@app.route` decorator the README example uses |
+  | flask | most important files, architecture | add `sansio/blueprints.py` (keep `blueprints.py`) | `BlueprintSetupState` and `register_blueprint` live there; `blueprints.py` is a thin subclass of it |
+  | flask | architecture | add `globals.py` | `current_app`, `g`, `request` and `session` are `LocalProxy` objects over context variables |
+  | flask | dependencies | add `cli.py` | imports `click`, a declared dependency, for `FlaskGroup` and `run_command` |
+
+  **No retrieval result was used to choose any of these.** That is a statement about the method, not a guarantee of independence: output of this same search on the starter questions had been looked at earlier in the working session, so the corrections were not made by someone who had never seen what retrieval returns.
+
+  **Left out, and why.**
+  * `encoding.py` was **not** added to architecture, because of circularity: the planned brief ranks files by import in-degree, `encoding.py` is imported by four sibling modules, and adding it would have credited the brief for surfacing a file the labels were bent toward.
+  * `url_safe.py` was not added to the itsdangerous dependency set (its `zlib` use is real but optional), and `signals.py` and `sessions.py` were not added to flask's, because `pyproject.toml` already names blinker and itsdangerous.
+  * **`exc.py` was added, and it is the most-imported file in itsdangerous** (imported by `signer`, `serializer`, `timed`, `url_safe`, `encoding` and `__init__`). It was added on the content of the file, as the public exception tree, but a brief ranking by in-degree will credit it for that reason too. `globals.py` and `sansio/scaffold.py` in flask may be in the same position; their in-degree was not counted. For that reason the step that evaluates the brief reports coverage two ways: counting only the final snippets, and counting snippets plus files the brief names.
+
+  **The incumbent under the corrected labels** (hash embeddings, `structured` records, BM25, top 5; same settings and contexts as before):
+
+  | split | repo | n | core coverage | was | noise share | manifest |
+  |---|---|---|---|---|---|---|
+  | dev | itsdangerous | 4 | 0.438 | 0.400 | 0.450 | 0.000 |
+  | dev | flask | 4 | 0.050 | 0.063 | 0.600 | 0.000 |
+  | **dev** | **overall** | **8** | **0.244** | 0.233 | **0.525** | **0.000** |
+  | held-out | itsdangerous | 4 | 0.500 | 0.425 | 0.600 | 0.000 |
+  | held-out | flask | 4 | 0.169 | 0.113 | 0.550 | 0.000 |
+  | **held-out** | **overall** | **8** | **0.335** | 0.269 | **0.575** | **0.000** |
+
+  **Only the core-coverage column moved.** Noise share, manifest coverage and prompt characters are identical to the previous entry for all sixteen questions, which is the check that the contexts did not change: the same search produced the same snippets and only the labels differ. The shipped code-question numbers are unchanged: `scripts/eval_retrieval.py --split test` prints hit@5 0.850 and MRR@10 0.778.
+
+  **Why coverage rose, and what that does not mean.** Most of the held-out gain, 0.269 to 0.335, is two questions whose contexts already held a newly-labelled file: itsdangerous "What frameworks and libraries are used?" now credits `signer.py` (0 to 0.33), and flask's same question now credits `cli.py` (0 to 0.33). Nothing about retrieval improved. A higher baseline is a different ruler, not a better search, and the old and new columns must not be compared as if they were two runs of one metric
+- Command: `.\.venv\Scripts\python.exe scripts/eval_overview.py --split dev`, then `.\.venv\Scripts\python.exe scripts/eval_overview.py --split test`, and `.\.venv\Scripts\python.exe scripts/eval_retrieval.py --split test`. No server, no model, no network
+- Dataset/repo: `eval/questions/overview/*.json` at https://github.com/pallets/itsdangerous 672971d66a2e and https://github.com/pallets/flask d73fa1cdcbd8
+- Date: 2026-11-07
+- Commit: 9611ca2 (the state measured, with the corrected labels); scripts unchanged since 94b80ee
+- Notes: **the rule at 6174e65 is unchanged** and any candidate is now read against the 0.244 dev and 0.335 held-out above, not against the earlier figures.
+  **Eight questions per split.** One question moving from 0 to 1 is 0.125 of a mean, so the 0.011 dev change is noise-sized and the held-out change is two questions' worth.
+  **The core lists are still one reader's judgement.** They are now checked against source for the files named above, but `__init__.py`, `exc.py` and `globals.py` were each argued from content and could be argued out
