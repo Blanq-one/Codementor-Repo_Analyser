@@ -2947,3 +2947,53 @@ Every number or claim here comes from a command that can be re-run.
 - Notes: **the rule at 6174e65 is unchanged** and any candidate is now read against the 0.244 dev and 0.335 held-out above, not against the earlier figures.
   **Eight questions per split.** One question moving from 0 to 1 is 0.125 of a mean, so the 0.011 dev change is noise-sized and the held-out change is two questions' worth.
   **The core lists are still one reader's judgement.** They are now checked against source for the files named above, but `__init__.py`, `exc.py` and `globals.py` were each argued from content and could be argued out
+
+### Feature: overview_brief.py, a deterministic description of a repository, built and not yet used by anything
+- Value: `codeatlas/services/qa/overview_brief.py` builds a text block of at most 3,500 characters from the repository on disk, with no model call: a capped file tree, the files other files import most, dependency names, and the README's opening. **It is not wired into any chat path and has no setting**; a test asserts that nothing under `codeatlas/` imports it. Every chat path behaves exactly as before, and `scripts/eval_retrieval.py --split test` still prints hit@5 0.850 and MRR@10 0.778.
+
+  **What it holds.** At most 40 paths with sizes (hidden, tests, docs, examples, vendored, generated, lock, binary and secret-looking files left out; top-level files first, then code shallowest-first); up to 8 files ranked by import in-degree, from the existing `ImportGraphBuilder` plus a resolver that maps the module names it returns to files; dependency **names only** from `pyproject.toml` and `requirements*.txt`; the first 1,500 characters of the README, with HTML-only lines dropped and key-like strings replaced.
+
+  **Safety.** Every file is opened only after `files_controller._safe_join`, the check `/files/content` uses; files over 1,000,000 bytes or containing a NUL are not read. The block opens by saying it is data to describe and not instructions, the README sits between `<<<README_DATA` and `README_DATA>>>`, and a marker typed inside the README is defused. A path with whitespace in it and a dependency entry that is not a plain package name cannot carry a sentence in. It never raises: with no import graph it is the tree, the dependency names and the README; with nothing readable it is an empty string.
+
+  **The two pinned repositories** (at the corrected-label commit's checkouts):
+
+  | repo | characters | files shown | most-imported lines | dependencies line |
+  |---|---|---|---|---|
+  | itsdangerous | 2,568 | 13 of 13 | 7 (the 8th file is imported by none) | declares no runtime dependencies |
+  | flask | 3,252 | 30 of 30 | 8 | blinker, click, itsdangerous, jinja2, markupsafe, werkzeug (+ 2 optional) |
+
+  **Import in-degree of every labelled core file, among the code files in the brief's scope** (8 files in itsdangerous, 24 in flask; tests, docs and examples are neither importers nor targets). "In top 8" is membership in the brief's most-imported list, which is by in-degree alone.
+
+  | repo | file | rank | in-degree | in top 8 | topics that label it |
+  |---|---|---|---|---|---|
+  | itsdangerous | `exc.py` | 1/8 | 6 | yes | architecture |
+  | itsdangerous | `encoding.py` | 2/8 | 5 | yes | dependencies |
+  | itsdangerous | `serializer.py` | 3/8 | 3 | yes | summary, files, read first, architecture |
+  | itsdangerous | `signer.py` | 4/8 | 3 | yes | summary, files, read first, architecture, dependencies |
+  | itsdangerous | `timed.py` | 5/8 | 2 | yes | summary, files, read first, architecture |
+  | itsdangerous | `_json.py` | 6/8 | 1 | yes | dependencies |
+  | itsdangerous | `url_safe.py` | 7/8 | 1 | yes | summary, architecture |
+  | itsdangerous | `__init__.py` | 8/8 | 0 | no | read first, architecture |
+  | flask | `globals.py` | 1/24 | 12 | yes | architecture |
+  | flask | `wrappers.py` | 3/24 | 9 | yes | dependencies |
+  | flask | `__init__.py` | 4/24 | 8 | yes | summary, read first |
+  | flask | `sansio/app.py` | 5/24 | 7 | yes | files, read first, architecture |
+  | flask | `app.py` | 6/24 | 6 | yes | summary, files, read first, architecture |
+  | flask | `ctx.py` | 7/24 | 5 | yes | architecture |
+  | flask | `sansio/scaffold.py` | 8/24 | 5 | yes | summary, files, architecture |
+  | flask | `templating.py` | 11/24 | 4 | no | summary, dependencies |
+  | flask | `cli.py` | 12/24 | 3 | no | summary, dependencies |
+  | flask | `blueprints.py` | 14/24 | 2 | no | files, architecture |
+  | flask | `sansio/blueprints.py` | 18/24 | 2 | no | files, architecture |
+
+  **What this means for scoring the brief.** In itsdangerous the most-imported list holds 7 of the 8 code files, and the tree lists all 13 files, so "named in the brief" covers almost every itsdangerous label by construction: seven of its eight labelled files are in the list **only because of in-degree, and in-degree is nearly everything in a package that small**. Flask discriminates: seven of its eleven labelled files are in the list and four are not (`templating.py`, `cli.py` and both `blueprints.py` files). `exc.py`, `globals.py` and `sansio/scaffold.py` are all in the list, ranked 1, 1 and 8, so the brief will be credited for them for exactly the reason the labels were flagged. `sansio/scaffold.py` sits on the edge: it is tied at 5 with `ctx.py` and takes the 8th place only because of the path order used to break ties. A later evaluation should read the flask rows and the itsdangerous rows separately, and not average a near-automatic itsdangerous gain into the headline
+- Command: `.\.venv\Scripts\python.exe -W ignore -c "from pathlib import Path; from codeatlas.services.qa.overview_brief import build_overview_brief as b; [print(n, len(b(Path(p)))) for n, p in (('itsdangerous', '.codeatlas/eval-repos/itsdangerous-672971d66a2e'), ('flask', '.codeatlas/eval-repos/flask-d73fa1cdcbd8'))]"` prints the two lengths; the in-degree ranks come from `import_ranking` on the same two folders; tests with `.\.venv\Scripts\python.exe -m pytest tests/test_overview_brief.py`. No server, no model, no network
+- Dataset/repo: https://github.com/pallets/itsdangerous 672971d66a2e and https://github.com/pallets/flask d73fa1cdcbd8; the labels are those of `eval/questions/overview/*.json` at 9611ca2
+- Date: 2026-11-07
+- Commit: 893c9da
+- Notes: **nothing here is a result about answer quality.** This entry builds an input and counts files; whether a model answers an overview question better with the block in front of it needs model calls, which were not made.
+  **The README text is untrusted input and the framing is a request, not a barrier.** The marker and the opening sentence make it hard for the README to close the frame or pass as the system's voice, and a test checks both; a model may still follow text it was told to treat as data, and nothing in this module can prevent that.
+  **The secret screen is a short list of patterns.** It replaced the itsdangerous README's example token (`eyJ...`) with `[redacted]` and left the signature half behind it; it would miss a credential shaped like none of them. Secret-looking file names are left out of the tree by name, not by content.
+  **The containment helper is imported from a controller.** `_safe_join` lives in `files_controller.py`, a module this branch must not edit, so it is imported inside the function that needs it (a top-level import would be a cycle once the agents import this module). Moving it to a shared utility is the right fix and touches that controller, so it is left as a follow-up for after batch-14. If the helper is renamed, the containment tests fail and the brief is empty rather than uncontained.
+  **The symlink test was skipped on this machine** (creating a symlink needs a privilege Windows withholds by default), so the claim that a link pointing outside the repository is not followed rests on `_safe_join` and on the test that replaces it with a function returning None, not on a link actually created here.
+  **Timing is one run.** itsdangerous took 1,243 ms and flask 77 ms in the same process, the first carrying the one-off import of the parser and `networkx`; the brief has not been timed on a 5,000-file repository, and nothing is cached, so it would be rebuilt for every overview question
